@@ -1,11 +1,11 @@
 name: AniStream Auto-Sync
 on:
   schedule:
-    - cron: '0 * * * *' # Har 1 ghante mein auto-check
-  workflow_dispatch: # ANDROID: GitHub app se manual button dabao
+    - cron: '0 * * * *' # Har ghante check karega
+  workflow_dispatch: # Android se "Run" button dabane ke liye
 
 jobs:
-  build:
+  sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
