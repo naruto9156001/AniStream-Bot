@@ -1,19 +1,16 @@
-import os, json, gspread, requests
-from google.oauth2 import service_account  # Ye line zaroori hai!
-from bs4 import BeautifulSoup
+import requests
+import gspread
+from google.oauth2 import service_account
 
-# Setup Credentials
-creds_dict = json.loads(os.environ['GCP_CREDENTIALS'])
-creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
-client = gspread.authorize(creds)
-sheet = client.open("AniStream_Database").sheet1
+# Tera API URL
+API_URL = "http://senpaianimes.rf.gd/api/anime-world-india/v1/home.php"
 
-TMDB_KEY = os.environ.get('TMDB_KEY') # .get() use karna safe hai
+# API se data fetch karne ka logic
+def get_anime_data():
+    response = requests.get(API_URL)
+    if response.status_code == 200:
+        return response.json() # Direct JSON mil gaya!
+    return None
 
-def update_sheet():
-    print("Scraping started...")
-    # Baaki ka logic yahan...
-    # (Jo maine pehle diya tha wo yahan paste kar)
-
-if __name__ == "__main__":
-    update_sheet()
+# Yahan se aage gspread ka code jo sheet mein data daalega
+# ...
