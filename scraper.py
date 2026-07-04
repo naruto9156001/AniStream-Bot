@@ -12,37 +12,48 @@ creds = service_account.Credentials.from_service_account_info(creds_dict, scopes
 client = gspread.authorize(creds)
 sheet = client.open("AniStream_Database").sheet1
 
-# 1. Main Page se saare links nikalna
-main_url = "https://animesalt.in/" 
-response = requests.get(main_url, headers={'User-Agent': 'Mozilla/5.0'})
-soup = BeautifulSoup(response.text, 'html.parser')
+existing_links = sheet.col_values(3) # Duplicate check ke liye
 
-# Saare episode link dhundo (is site ke structure ke hisaab se)
-links = set()
-for a in soup.find_all('a', href=True):
-    if '/episode/' in a['href']:
-        full_link = "https://animesalt.in" + a['href'] if a['href'].startswith('/') else a['href']
-        links.add(full_link)
+# Pagination Setup: Page 1 se shuru karke tab tak chalega jab tak links mil rahe hain
+page_num = 1
+while True:
+    print(f"--- Scraping Page {page_num} ---")
+    url = f"https://animesalt.in/page/{page_num}" # Ye structure check kar lena
+    response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
+    
+    if response.status_code != 200:
+        print("Saare pages finish ho gaye!")
+        break
+        
+    soup = BeautifulSoup(response.text, 'html.parser')
+    episodes = soup.find_all('a', href=lambda x: x and '/episode/' in x)
+    
+    if not episodes: # Agar page par koi link nahi mila toh ruk jao
+        break
 
-# 2. Existing links check karo
-existing_links = sheet.col_values(3)
+    for ep in episodes:
+        link = ep['href']
+        if not link.startswith('http'):
+            link = "https://animesalt.in" + link
+            
+        if link in existing_links:
+            continue
+            
+        try:
+            # Video page par jaakar detail nikalo
+            res = requests.get(link, headers={'User-Agent': 'Mozilla/5.0'})
+            soup_ep = BeautifulSoup(res.text, 'html.parser')
+            
+            title = soup_ep.find("meta", property="og:title")["content"]
+            iframe = soup_ep.find("iframe")
+            video_link = iframe['src'] if iframe else "No Link"
+            
+            sheet.append_row(["ID_AUTO", title, video_link, "FALSE"])
+            existing_links.append(link) # Memory mein add karo
+            print(f"Added: {title}")
+        except:
+            continue
+            
+    page_num += 1 # Agle page par jao
 
-# 3. Naye links ko scrape karke sheet mein daalo
-for url in list(links)[:10]: # Sirf top 10 naye links uthayega
-    if url in existing_links:
-        continue
-        
-    try:
-        page_res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
-        page_soup = BeautifulSoup(page_res.text, 'html.parser')
-        
-        title = page_soup.find("meta", property="og:title")["content"]
-        
-        # Iframe ka source nikalna
-        iframe = page_soup.find("iframe")
-        video_link = iframe['src'] if iframe else "N/A"
-        
-        sheet.append_row(["ID_AUTO", title, video_link, "FALSE"])
-        print(f"Added New Episode: {title}")
-    except Exception as e:
-        print(f"Error: {e}")
+print("Scanning Complete!")
