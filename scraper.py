@@ -12,28 +12,37 @@ creds = service_account.Credentials.from_service_account_info(creds_dict, scopes
 client = gspread.authorize(creds)
 sheet = client.open("AniStream_Database").sheet1
 
-# 1. Jin websites ko scrap karna hai (List bana lo)
-urls = [
-    "https://animesalt.in/episode/fullmetal-alchemist-brotherhood-1x2",
-    "https://animesalt.in/episode/fullmetal-alchemist-brotherhood-1x3"
-]
+# 1. Main Page se saare links nikalna
+main_url = "https://animesalt.in/" 
+response = requests.get(main_url, headers={'User-Agent': 'Mozilla/5.0'})
+soup = BeautifulSoup(response.text, 'html.parser')
 
-# 2. Existing links check karo taaki duplicate na ho
-existing_links = sheet.col_values(3) # Column 3 mein links hain
+# Saare episode link dhundo (is site ke structure ke hisaab se)
+links = set()
+for a in soup.find_all('a', href=True):
+    if '/episode/' in a['href']:
+        full_link = "https://animesalt.in" + a['href'] if a['href'].startswith('/') else a['href']
+        links.add(full_link)
 
-for url in urls:
+# 2. Existing links check karo
+existing_links = sheet.col_values(3)
+
+# 3. Naye links ko scrape karke sheet mein daalo
+for url in list(links)[:10]: # Sirf top 10 naye links uthayega
     if url in existing_links:
-        print(f"Skipping: {url} (Already in sheet)")
         continue
         
     try:
-        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
-        soup = BeautifulSoup(response.text, 'html.parser')
+        page_res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
+        page_soup = BeautifulSoup(page_res.text, 'html.parser')
         
-        title = soup.find("meta", property="og:title")["content"]
-        video_link = url # Yahan logic update kar sakte ho agar iframe alag ho
+        title = page_soup.find("meta", property="og:title")["content"]
+        
+        # Iframe ka source nikalna
+        iframe = page_soup.find("iframe")
+        video_link = iframe['src'] if iframe else "N/A"
         
         sheet.append_row(["ID_AUTO", title, video_link, "FALSE"])
-        print(f"Added: {title}")
+        print(f"Added New Episode: {title}")
     except Exception as e:
-        print(f"Error scraping {url}: {e}")
+        print(f"Error: {e}")
