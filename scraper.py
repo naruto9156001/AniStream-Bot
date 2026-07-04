@@ -1,41 +1,34 @@
 import os, json, gspread, requests
 from bs4 import BeautifulSoup
 
-# Setup
-creds = service_account.Credentials.from_service_account_info(json.loads(os.environ['GCP_CREDENTIALS']), scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
+# Google Sheet Setup
+creds = service_account.Credentials.from_service_account_info(json.loads(os.environ['GCP_CREDENTIALS']))
+client = gspread.authorize(creds)
 sheet = client.open("AniStream_Database").sheet1
 
-def get_all_anime_links():
-    # Yahan wo link daal jahan saari list hai
-    url = "https://animesalt.in/anime-list" 
+def start_scraping():
+    # 1. Latest Anime Section se links uthao
+    url = "https://animesalt.in/" 
     soup = BeautifulSoup(requests.get(url).text, 'html.parser')
-    # Ye CSS selector tere site ke structure ke hisaab se hoga
-    return [a['href'] for a in soup.select('div.anime-list-item a')]
-
-def run_full_scan():
-    existing_data = sheet.get_all_values()
-    anime_links = get_all_anime_links()
     
-    for link in anime_links:
-        # Link se name nikalna
-        name = link.split('/')[-1].replace('-dub', '').upper()
+    # Ye selector har 'Latest Episode' card ko pakad lega
+    anime_cards = soup.select('.latest-episode-card a') 
+    
+    for card in anime_cards:
+        link = card['href']
+        # Extract title aur episode logic
+        # Agar link mein 'dub' hai toh flag True karo
+        is_hindi = "dub" in link
         
-        # Loop for episodes
-        for ep in range(1, 1000): # Hard limit
-            ep_url = f"{link}-1x{ep}"
+        # Metadata nikalna
+        name = link.split('/')[-1].split('-')[0].upper()
+        
+        # Database mein check karo
+        if any(row[5] == link for row in sheet.get_all_values()):
+            continue
             
-            # Check if in sheet
-            if any(row[0] == name and row[2] == str(ep) for row in existing_data):
-                continue
-            
-            # Fast Check
-            if requests.head(ep_url).status_code == 200:
-                # Scrape details
-                soup = BeautifulSoup(requests.get(ep_url).text, 'html.parser')
-                video = soup.find("iframe")['src'] if soup.find("iframe") else "N/A"
-                thumb = soup.find("meta", property="og:image")['content']
-                
-                sheet.append_row([name, 1, ep, f"{name} Ep {ep}", thumb, ep_url, video, "FALSE"])
-                print(f"✅ Added: {name} Ep {ep}")
-            else:
-                break # Episode khatam
+        # Naya episode add karo
+        sheet.append_row([name, 1, "NEW", "Hindi" if is_hindi else "Sub", link, "PENDING"])
+        print(f"🚀 New Content Detected: {name}")
+
+start_scraping()
