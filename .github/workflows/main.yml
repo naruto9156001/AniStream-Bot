@@ -1,8 +1,9 @@
-name: Auto Scraper
+name: Auto Anime Scraper
+
 on:
   schedule:
-    - cron: '0 */6 * * *' # Har 6 ghante mein run hoga
-  workflow_dispatch:      # Tu button daba kar bhi run kar sakega
+    - cron: '0 */6 * * *' # Ye har 6 ghante mein automate chalega
+  workflow_dispatch:      # Isse tu button daba kar manually bhi chala sakta hai
 
 jobs:
   build:
@@ -10,13 +11,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.9'
+
       - name: Install dependencies
-        run: pip install requests gspread google-auth
+        run: |
+          pip install requests gspread google-auth
+
       - name: Run Scraper
-        run: python scraper.py
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: credentials.json
+          GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+          TMDB_KEY: ${{ secrets.TMDB_KEY }}
+        run: python scraper.py
