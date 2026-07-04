@@ -17,9 +17,10 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Install dependencies
+            - name: Install dependencies
         run: |
-          pip install requests gspread google-auth
+          pip install requests gspread google-auth cloudscraper
+
 
       - name: Run Scraper
         env:
