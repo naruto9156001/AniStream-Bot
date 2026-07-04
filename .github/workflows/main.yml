@@ -2,8 +2,8 @@ name: Auto Anime Scraper
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # Ye har 6 ghante mein automate chalega
-  workflow_dispatch:      # Isse tu button daba kar manually bhi chala sakta hai
+    - cron: '0 */6 * * *' # Har 6 ghante mein run hoga
+  workflow_dispatch:      # Manual trigger button
 
 jobs:
   build:
@@ -17,10 +17,9 @@ jobs:
         with:
           python-version: '3.9'
 
-            - name: Install dependencies
+      - name: Install dependencies
         run: |
           pip install requests gspread google-auth cloudscraper
-
 
       - name: Run Scraper
         env:
