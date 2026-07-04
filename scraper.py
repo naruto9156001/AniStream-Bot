@@ -1,34 +1,35 @@
 import os, json, gspread, requests
 from bs4 import BeautifulSoup
 
-# Google Sheet Setup
+# Setup
 creds = service_account.Credentials.from_service_account_info(json.loads(os.environ['GCP_CREDENTIALS']))
 client = gspread.authorize(creds)
 sheet = client.open("AniStream_Database").sheet1
 
-def start_scraping():
-    # 1. Latest Anime Section se links uthao
-    url = "https://animesalt.in/" 
-    soup = BeautifulSoup(requests.get(url).text, 'html.parser')
+def update_sheet():
+    base_url = "https://animesalt.in"
+    # Homepage scan (yahan saare latest updates hote hain)
+    soup = BeautifulSoup(requests.get(f"{base_url}/").text, 'html.parser')
     
-    # Ye selector har 'Latest Episode' card ko pakad lega
-    anime_cards = soup.select('.latest-episode-card a') 
+    # Ye selector animesalt ke episode links ko pakad lega
+    links = [a['href'] for a in soup.select('a[href*="/episode/"]')]
     
-    for card in anime_cards:
-        link = card['href']
-        # Extract title aur episode logic
-        # Agar link mein 'dub' hai toh flag True karo
-        is_hindi = "dub" in link
-        
-        # Metadata nikalna
-        name = link.split('/')[-1].split('-')[0].upper()
-        
-        # Database mein check karo
-        if any(row[5] == link for row in sheet.get_all_values()):
-            continue
+    existing_links = sheet.col_values(6) # URL column check karna
+    
+    for link in links:
+        if link not in existing_links:
+            # Full URL banao
+            full_url = base_url + link if not link.startswith('http') else link
             
-        # Naya episode add karo
-        sheet.append_row([name, 1, "NEW", "Hindi" if is_hindi else "Sub", link, "PENDING"])
-        print(f"🚀 New Content Detected: {name}")
+            # Metadata extract karo
+            # Format: anime-dub-1x1
+            parts = link.split('/')[-1].split('-')
+            name = parts[0].upper()
+            ep = parts[-1].split('x')[-1]
+            lang = "Hindi" if "dub" in link else "English"
+            
+            # Sheet mein add karo
+            sheet.append_row([name, 1, ep, f"{name} Ep {ep}", "N/A", full_url, lang])
+            print(f"✅ Added to Sheet: {name} - Ep {ep}")
 
-start_scraping()
+update_sheet()
