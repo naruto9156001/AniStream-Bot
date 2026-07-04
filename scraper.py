@@ -1,8 +1,26 @@
 import os
 import json
-import requests  # <--- Ye line add karna zaroori hai!
+import requests
 import gspread
 from google.oauth2 import service_account
+
+# Scopes डिफाइन करें
+SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive'
+]
+
+# Google Cloud secret से temp file बनाएँ
+gcp_creds_json = os.getenv('GCP_CREDENTIALS')
+with open('credentials.json', 'w') as f:
+    f.write(gcp_creds_json)
+
+# यहाँ scopes=SCOPES जोड़ना न भूलें!
+creds = service_account.Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
+client = gspread.authorize(creds)
+
+def update_google_sheet():
+    # ... बाकी का कोड ...
 
 # Secrets ko environment variable se uthao
 gcp_creds_json = os.getenv('GCP_CREDENTIALS')
