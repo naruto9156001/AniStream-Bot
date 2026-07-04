@@ -17,25 +17,19 @@ with open('credentials.json', 'w') as f:
 
 # 3. API se data fetch karne ka function (Cloudscraper ke saath)
 def get_anime_data():
-    # Tera API URL
     api_url = "http://senpaianimes.rf.gd/api/anime-world-india/v1/home.php"
     
-    # Is baar hum 'requests' use karenge lekin 'headers' ko badha denge
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json',
-        'Referer': 'https://www.google.com/'
-    }
+    # Cloudscraper ka use karke bypass karna
+    scraper = cloudscraper.create_scraper()
     
     try:
-        # Timeout badha diya hai taaki server response dene ke liye time le sake
-        response = requests.get(api_url, headers=headers, timeout=30) 
+        # Browser emulation ke saath request
+        response = scraper.get(api_url, timeout=30)
         
         if response.status_code == 200:
-            # Check karo kya response mein 'success': true hai
             data = response.json()
             if data.get('success'):
-                # Yahan hum 'latest_series' ya 'latest_movies' ka list return karenge
+                # Series aur Movies ko combine karke return karo
                 return data.get('latest_series', []) + data.get('latest_movies', [])
             else:
                 print("API Success False:", data)
@@ -43,9 +37,8 @@ def get_anime_data():
             print(f"Server Status Code: {response.status_code}")
             
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error fetching API: {e}")
     return None
-
 
 # 4. Google Sheet update function
 def update_google_sheet():
@@ -64,7 +57,8 @@ def update_google_sheet():
         for anime in anime_list:
             title = anime.get('title', 'N/A')
             image = anime.get('image', 'N/A')
-            link = anime.get('link', 'N/A')
+            # PHP code ke hisaab se agar 'link' key nahi hai, toh ye safe rahega
+            link = anime.get('link', 'N/A') 
             sheet.append_row([title, image, link])
             
         print("Sheet successfully updated!")
