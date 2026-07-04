@@ -17,4 +17,5 @@ jobs:
       - name: Run Scraper
         env:
           GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+          TMDB_KEY: ${{ secrets.TMDB_KEY }}
         run: python scraper.py
