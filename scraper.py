@@ -1,42 +1,41 @@
 import os
 import json
-import requests
+import cloudscraper
 import gspread
 from google.oauth2 import service_account
 
-# Scopes Define Karo
+# 1. Scopes Define Karo
 SCOPES = [
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/drive'
 ]
 
-# Credentials Setup
+# 2. Credentials Setup (Secrets se file banana)
 gcp_creds_json = os.getenv('GCP_CREDENTIALS')
 with open('credentials.json', 'w') as f:
     f.write(gcp_creds_json)
 
-# UPDATED: Browser Header ke saath API fetch function
+# 3. API se data fetch karne ka function (Cloudscraper ke saath)
 def get_anime_data():
     api_url = "http://senpaianimes.rf.gd/api/anime-world-india/v1/home.php"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
+    scraper = cloudscraper.create_scraper() # Browser emulation to bypass security
     try:
-        response = requests.get(api_url, headers=headers, timeout=15) 
-        print(f"Status Code: {response.status_code}") # Ye check karo
-        print(f"Response Body: {response.text[:200]}") # Response kya aa raha hai
-        
+        response = scraper.get(api_url, timeout=15)
         if response.status_code == 200:
             return response.json()
+        else:
+            print(f"Server returned status code: {response.status_code}")
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error fetching API: {e}")
     return None
 
-# Google Sheet update function
+# 4. Google Sheet update function
 def update_google_sheet():
+    # Sahi credentials loading with SCOPES
     creds = service_account.Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
     client = gspread.authorize(creds)
     
+    # Sheet open karo
     sheet = client.open("AniStream_Database").sheet1 
     anime_list = get_anime_data()
     
