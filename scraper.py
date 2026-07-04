@@ -1,5 +1,7 @@
 import os
 import json
+import requests  # <--- Ye line add karna zaroori hai!
+import gspread
 from google.oauth2 import service_account
 
 # Secrets ko environment variable se uthao
@@ -9,38 +11,35 @@ gcp_creds_json = os.getenv('GCP_CREDENTIALS')
 with open('credentials.json', 'w') as f:
     f.write(gcp_creds_json)
 
-# Ab wahi purana logic use karo
-creds = service_account.Credentials.from_service_account_file('credentials.json')
-# ... baaki tera code
-
 # 1. API se data fetch karne ka logic
 def get_anime_data():
     api_url = "http://senpaianimes.rf.gd/api/anime-world-india/v1/home.php"
-    response = requests.get(api_url)
-    if response.status_code == 200:
-        return response.json()
+    try:
+        response = requests.get(api_url)
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        print(f"Error fetching API: {e}")
     return None
 
 # 2. Google Sheet mein update karne ka logic
 def update_google_sheet():
-    # Credentials setup (Apni JSON file ka path yahan daal)
+    # Credentials setup
     creds = service_account.Credentials.from_service_account_file('credentials.json')
     client = gspread.authorize(creds)
     
-    # Sheet ka naam ya ID
+    # Sheet ka naam
     sheet = client.open("AniStream_Database").sheet1 
     
     # API se data lao
     anime_list = get_anime_data()
     
     if anime_list:
-        # Sheet saaf karo aur naya data dalo
         sheet.clear()
-        # Header add karo
         sheet.append_row(["Title", "Image", "Link"])
         
-        # Data insert karo
         for anime in anime_list:
+            # Dhyan rakhna ki JSON keys yahi hon (agar API mein 'name' hai toh 'name' likhna)
             title = anime.get('title', 'N/A')
             image = anime.get('image', 'N/A')
             link = anime.get('link', 'N/A')
@@ -48,7 +47,8 @@ def update_google_sheet():
             
         print("Sheet successfully updated!")
     else:
-        print("API se data nahi mila!")
+        print("API se data nahi mila ya error aaya!")
 
 # Run the function
-update_google_sheet()
+if __name__ == "__main__":
+    update_google_sheet()
