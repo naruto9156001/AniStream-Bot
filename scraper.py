@@ -1,6 +1,17 @@
-import requests
-import gspread
+import os
+import json
 from google.oauth2 import service_account
+
+# Secrets ko environment variable se uthao
+gcp_creds_json = os.getenv('GCP_CREDENTIALS')
+
+# Secret ko temporary file mein likho
+with open('credentials.json', 'w') as f:
+    f.write(gcp_creds_json)
+
+# Ab wahi purana logic use karo
+creds = service_account.Credentials.from_service_account_file('credentials.json')
+# ... baaki tera code
 
 # 1. API se data fetch karne ka logic
 def get_anime_data():
