@@ -23,12 +23,13 @@ def get_anime_data():
     }
     try:
         response = requests.get(api_url, headers=headers, timeout=15) 
+        print(f"Status Code: {response.status_code}") # Ye check karo
+        print(f"Response Body: {response.text[:200]}") # Response kya aa raha hai
+        
         if response.status_code == 200:
             return response.json()
-        else:
-            print(f"Server returned status code: {response.status_code}")
     except Exception as e:
-        print(f"Error fetching API: {e}")
+        print(f"Error: {e}")
     return None
 
 # Google Sheet update function
