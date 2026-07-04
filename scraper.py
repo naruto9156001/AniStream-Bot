@@ -17,7 +17,7 @@ def update_google_sheet():
     client = gspread.authorize(creds)
     
     # Sheet ka naam ya ID
-    sheet = client.open("TERA_SHEET_NAME").sheet1 
+    sheet = client.open("AniStream_Database").sheet1 
     
     # API se data lao
     anime_list = get_anime_data()
