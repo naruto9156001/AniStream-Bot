@@ -1,17 +1,16 @@
-name: Ultimate AniStream Scraper
+name: AniStream Auto-Sync
 on:
   schedule:
-    - cron: '0 0 * * *' # Roz raat ko 12 baje full scan
-  workflow_dispatch: # Manual button ke liye
+    - cron: '0 * * * *' # Har 1 ghante mein auto-check
+  workflow_dispatch: # ANDROID: GitHub app se manual button dabao
 
 jobs:
-  scrape:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+        with: {python-version: '3.10'}
       - run: |
           pip install gspread oauth2client requests beautifulsoup4
           python scraper.py
