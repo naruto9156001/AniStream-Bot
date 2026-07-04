@@ -1,56 +1,31 @@
-import os
-import json
-import gspread
-import requests
+import os, json, gspread, requests, time
 from bs4 import BeautifulSoup
 from google.oauth2 import service_account
 
-# 1. Setup - GitHub Secrets se credentials uthana
+# Setup
 creds_dict = json.loads(os.environ['GCP_CREDENTIALS'])
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=scope)
+creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
 client = gspread.authorize(creds)
 sheet = client.open("AniStream_Database").sheet1
 
-# 2. Anime list jise scrap karna hai
-# Tu yahan aur bhi anime add kar sakta hai
-anime_list = [
-    {"base_url": "https://animesalt.in/episode/jujutsu-kaisen-1x", "max_eps": 24},
-    {"base_url": "https://animesalt.in/episode/fullmetal-alchemist-brotherhood-1x", "max_eps": 64}
-]
+# TMDB Config
+TMDB_KEY = "9912d7e50dc9a4589075d72b3aa3c6e6" # Yahan apni API Key daal
+BASE_TMDB_URL = "https://api.themoviedb.org/3"
 
-existing_links = sheet.col_values(3) # Duplicate check ke liye 3rd column check hoga
-
-# 3. Scraping Loop
-for anime in anime_list:
-    base_url = anime["base_url"]
-    max_eps = anime["max_eps"]
+def get_tmdb_data(anime_name, season, ep):
+    # Search for the anime to get its ID
+    search_url = f"{BASE_TMDB_URL}/search/tv?api_key={TMDB_KEY}&query={anime_name}"
+    res = requests.get(search_url).json()
+    if not res['results']: return None
     
-    print(f"--- Scraping Anime: {base_url.split('/')[-1]} ---")
+    anime_id = res['results'][0]['id']
+    # Get episode image
+    ep_url = f"{BASE_TMDB_URL}/tv/{anime_id}/season/{season}/episode/{ep}?api_key={TMDB_KEY}"
+    ep_res = requests.get(ep_url).json()
     
-    for i in range(1, max_eps + 1):
-        url = f"{base_url}{i}"
-        
-        if url in existing_links:
-            continue
-        
-        try:
-            response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                
-                # Title aur Video Link
-                title_meta = soup.find("meta", property="og:title")
-                title = title_meta["content"] if title_meta else "Title Not Found"
-                
-                iframe = soup.find("iframe")
-                video_link = iframe['src'] if iframe else "No Link Found"
-                
-                # Sheet mein data daalo
-                sheet.append_row(["ID_AUTO", title, video_link, "FALSE"])
-                existing_links.append(url) # Local list update karo
-                print(f"Added: {title}")
-        except Exception as e:
-            print(f"Error on {url}: {e}")
+    if 'still_path' in ep_res and ep_res['still_path']:
+        return f"https://image.tmdb.org/t/p/w500{ep_res['still_path']}"
+    return None
 
-print("Scraping Process Completed Successfully!")
+# Scraper Loop mein ye integrate kar le:
+# thumbnail = get_tmdb_data("Jujutsu Kaisen", "1", i)
