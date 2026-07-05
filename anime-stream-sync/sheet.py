@@ -8,14 +8,27 @@ from config import GOOGLE_SHEET_ID, ANIME_SHEET, EPISODES_SHEET, GCP_CREDENTIALS
 logger = logging.getLogger(__name__)
 
 def get_client():
-    if GCP_CREDENTIALS:
-        creds_info = json.loads(GCP_CREDENTIALS)
-        creds = Credentials.from_service_account_info(creds_info)
-    else:
-        creds = Credentials.from_service_account_file('credentials.json')
-    return gspread.authorize(creds)
+    try:
+        if GCP_CREDENTIALS:
+            creds_info = json.loads(GCP_CREDENTIALS)
+            scopes = [
+                'https://spreadsheets.google.com/feeds',
+                'https://www.googleapis.com/auth/drive',
+                'https://www.googleapis.com/auth/spreadsheets'
+            ]
+            creds = Credentials.from_service_account_info(creds_info, scopes=scopes)
+        else:
+            creds = Credentials.from_service_account_file('credentials.json', scopes=scopes)
+        
+        client = gspread.authorize(creds)
+        return client
+    except Exception as e:
+        logger.error(f"Credentials Error: {e}")
+        raise
 
 def update_google_sheet(data):
+    if not data:
+        return
     try:
         client = get_client()
         sheet = client.open_by_key(GOOGLE_SHEET_ID)
@@ -25,18 +38,31 @@ def update_google_sheet(data):
 
         for entry in data:
             a = entry['anime']
+            # Anime row
             anime_ws.append_row([
-                a.get('id'), a.get('name'), a.get('poster'), a.get('synopsis'),
-                a.get('imdb'), json.dumps(a.get('genres', [])), 'Ongoing',
-                a.get('year'), len(entry['episodes']), 'Auto'
+                a.get('id'), 
+                a.get('name'), 
+                a.get('poster'), 
+                '',  # synopsis
+                '',  # imdb
+                '',  # genres
+                'Ongoing',
+                '',  # year
+                1,   # episodes count
+                'Auto'
             ])
 
             for ep in entry['episodes']:
                 episodes_ws.append_row([
-                    a.get('id'), ep.get('number'), ep.get('title'),
-                    ep.get('thumbnail'), json.dumps(ep.get('streams', {})),
-                    str(list(ep.get('streams', {}).keys())), ep.get('hindi_dub', False)
+                    a.get('id'), 
+                    ep.get('number'), 
+                    ep.get('title'),
+                    ep.get('thumbnail'), 
+                    json.dumps(ep.get('streams', {})), 
+                    "720", 
+                    ep.get('hindi_dub', True)
                 ])
-        logger.info("✅ Sheet updated")
+        
+        logger.info(f"✅ Successfully updated {len(data)} anime in sheet")
     except Exception as e:
         logger.error(f"Sheet error: {e}")
