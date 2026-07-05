@@ -3,24 +3,23 @@ from bs4 import BeautifulSoup
 
 def parse_anime_list(soup):
     items = []
-    print("DEBUG: Page title:", soup.title.string if soup.title else "No title")  # Debug
+    print("DEBUG: Page title:", soup.title.string if soup.title else "No title")
     
-    # Try multiple possible selectors
-    for selector in ['a[href*="/anime/"]', 'a[href*="/series/"]', '.card', '.anime', 'h3 a']:
-        for card in soup.select(selector):
-            link = card.get('href', '')
-            if link and ('/anime/' in link or '/series/' in link):
-                title = card.get('title') or card.text.strip()
-                if len(title) > 5:
-                    full_url = 'https://animesalt.in' + link if not link.startswith('http') else link
-                    items.append({
-                        'id': full_url.split('/')[-1],
-                        'name': title,
-                        'url': full_url,
-                        'poster': ''
-                    })
-    print(f"DEBUG: Found {len(items)} anime")  # Debug
-    return items[:10]
+    # Better selectors for animesalt.ac
+    for card in soup.select('a[href*="/anime/"], .poster, .item, .card'):
+        link = card.get('href', '')
+        if '/anime/' in link:
+            title = card.get('title') or card.select_one('img').get('alt', '') if card.find('img') else ''
+            if title:
+                full_url = 'https://animesalt.ac' + link if not link.startswith('http') else link
+                items.append({
+                    'id': full_url.split('/')[-1],
+                    'name': title,
+                    'url': full_url,
+                    'poster': ''
+                })
+    print(f"DEBUG: Found {len(items)} anime")
+    return items[:20]
 
 def get_tmdb_metadata(name):
     return {}
