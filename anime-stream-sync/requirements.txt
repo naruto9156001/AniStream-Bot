@@ -4,6 +4,5 @@ lxml
 gspread
 google-auth
 python-dotenv
-tmdbsimple
 selenium
 webdriver-manager
