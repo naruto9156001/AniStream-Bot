@@ -1,24 +1,38 @@
 import requests
+import logging
+import time
 from bs4 import BeautifulSoup
 
-def get_embed_link(url):
-    try:
-        # Website ko request bhejna
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers)
-        
-        if response.status_code != 200:
-            return "No embed link found"
-            
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # AnimeSalt par aksar video link 'iframe' tag mein hota hai
-        # Tu apne browser mein F12 daba kar check kar ki video link kahan hai
-        iframe = soup.find('iframe')
-        
-        if iframe and 'src' in iframe.attrs:
-            return iframe['src'] # Ye tera streaming link hoga
-            
-        return "No embed link found"
-    except Exception:
-        return "No embed link found"
+from config import TARGET_SITES, USER_AGENT, TMDB_API_KEY
+from parser import parse_anime_list, get_tmdb_metadata
+from extractor import extract_episode_data
+from cache import load_cache, save_cache
+
+logger = logging.getLogger(__name__)
+
+def scrape_anime():
+    cache = load_cache()
+    new_data = []
+    headers = {"User-Agent": USER_AGENT}
+
+    for url in TARGET_SITES:
+        try:
+            resp = requests.get(url, headers=headers, timeout=20)
+            soup = BeautifulSoup(resp.text, 'lxml')
+            anime_list = parse_anime_list(soup)
+
+            for anime in anime_list:
+                tmdb = get_tmdb_metadata(anime['name']) if TMDB_API_KEY else {}
+                anime.update(tmdb)
+
+                new_eps = extract_episode_data(anime, cache.get(anime['id'], []))
+                if new_eps:
+                    new_data.append({'anime': anime, 'episodes': new_eps})
+                    cache.setdefault(anime['id'], []).extend([ep['number'] for ep in new_eps])
+
+            time.sleep(3)
+        except Exception as e:
+            logger.error(f"Error {url}: {e}")
+
+    save_cache(cache)
+    return new_data
