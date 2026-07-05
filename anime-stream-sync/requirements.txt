@@ -1,0 +1,7 @@
+requests
+beautifulsoup4
+lxml
+gspread
+google-auth
+python-dotenv
+tmdbsimple
