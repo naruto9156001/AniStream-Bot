@@ -3,34 +3,26 @@ from bs4 import BeautifulSoup
 
 def parse_anime_list(soup):
     items = []
-    for card in soup.select('a, div, h3'):
-        link = card.get('href', '')
-        if '/anime/' in link or '/series/' in link:
-            title = card.get('title') or card.text.strip()
-            if len(title) > 5:
-                full_url = link if link.startswith('http') else 'https://animesalt.in' + link
-                items.append({
-                    'id': full_url.split('/')[-1],
-                    'name': title,
-                    'url': full_url,
-                    'poster': ''
-                })
-    return list({v['url']:v for v in items}.values())[:15]
+    print("DEBUG: Page title:", soup.title.string if soup.title else "No title")  # Debug
+    
+    # Try multiple possible selectors
+    for selector in ['a[href*="/anime/"]', 'a[href*="/series/"]', '.card', '.anime', 'h3 a']:
+        for card in soup.select(selector):
+            link = card.get('href', '')
+            if link and ('/anime/' in link or '/series/' in link):
+                title = card.get('title') or card.text.strip()
+                if len(title) > 5:
+                    full_url = 'https://animesalt.in' + link if not link.startswith('http') else link
+                    items.append({
+                        'id': full_url.split('/')[-1],
+                        'name': title,
+                        'url': full_url,
+                        'poster': ''
+                    })
+    print(f"DEBUG: Found {len(items)} anime")  # Debug
+    return items[:10]
 
 def get_tmdb_metadata(name):
-    """TMDB metadata"""
-    try:
-        url = f"https://api.themoviedb.org/3/search/tv?api_key={TMDB_API_KEY}&query={name.replace(' ', '+')}"
-        data = requests.get(url).json()
-        if data.get('results'):
-            item = data['results'][0]
-            return {
-                'synopsis': item.get('overview', ''),
-                'poster': f"https://image.tmdb.org/t/p/w500{item.get('poster_path')}" if item.get('poster_path') else '',
-                'year': item.get('first_air_date', '')[:4]
-            }
-    except:
-        pass
     return {}
 
 def parse_episode_page(url):
