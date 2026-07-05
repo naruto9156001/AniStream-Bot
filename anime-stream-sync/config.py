@@ -14,6 +14,6 @@ GOOGLE_SHEET_ID = os.getenv('GOOGLE_SHEET_ID')
 ANIME_SHEET = "Anime Database"
 EPISODES_SHEET = "Episodes"
 
-TARGET_SITES = ["https://animesalt.in/"]   # ← Change this
+TARGET_SITES = ["https://animesalt.ac/"]   # ← Change this
 
 CACHE_FILE = "cache/watched.json"
