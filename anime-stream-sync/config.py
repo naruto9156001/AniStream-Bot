@@ -1,19 +1,33 @@
-import os
-import json
-from dotenv import load_dotenv
+from bs4 import BeautifulSoup
+import time
 
-load_dotenv()
+def parse_anime_list(soup):
+    items = []
+    print("DEBUG: Page title:", soup.title.string if soup.title else "No title")
+    
+    for a in soup.find_all('a', href=True):
+        href = a['href']
+        if '/anime/' in href and len(href) > 15:
+            title = a.get('title') or ''
+            if not title:
+                img = a.find('img')
+                title = img.get('alt', '') if img else a.text.strip()
+            
+            if len(title) > 5 and 'episode' not in title.lower():
+                full_url = 'https://animesalt.ac' + href if not href.startswith('http') else href
+                items.append({
+                    'id': full_url.split('/')[-1].split('-')[0],
+                    'name': title,
+                    'url': full_url,
+                    'poster': ''
+                })
+    
+    unique = {item['url']: item for item in items}
+    print(f"DEBUG: Found {len(unique)} anime")
+    return list(unique.values())[:30]
 
-CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', 3600))
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+def get_tmdb_metadata(name):
+    return {}
 
-TMDB_API_KEY = os.getenv('TMDB_KEY')
-GCP_CREDENTIALS = os.getenv('GCP_CREDENTIALS')   # JSON string
-
-GOOGLE_SHEET_ID = os.getenv('GOOGLE_SHEET_ID')
-ANIME_SHEET = "Anime Database"
-EPISODES_SHEET = "Episodes"
-
-TARGET_SITES = ["https://animesalt.ac/?s="]   # ← Change this
-
-CACHE_FILE = "cache/watched.json"
+def parse_episode_page(url):
+    return {'title': 'Episode', 'player_url': url}
