@@ -40,7 +40,7 @@ def update_logic():
         
     try:
         # Apni Google Sheet ka naam yahan likh (e.g., 'Anime List')
-        sheet = client.open("TERI_SHEET_KA_NAAM").sheet1
+        sheet = client.open("AniStream_Database").sheet1
         
         # Maan lete hain Column A (1) mein tere Anime Salt ke links hain
         # Aur Column B (2) mein embed links hain
