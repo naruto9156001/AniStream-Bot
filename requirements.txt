@@ -1,4 +1,5 @@
-gspread
 requests
 beautifulsoup4
-google-auth
+schedule
+gspread
+oauth2client
