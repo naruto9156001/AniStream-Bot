@@ -3,6 +3,7 @@ import json
 import time
 import schedule
 import gspread
+import traceback  # <-- Naya import error details track karne ke liye
 from oauth2client.service_account import ServiceAccountCredentials
 from scraper import get_embed_link
 
@@ -39,10 +40,10 @@ def update_logic():
         return
         
     try:
-        # Apni Google Sheet ka naam yahan likh (e.g., 'Anime List')
+        # Apni Google Sheet ka naam
         sheet = client.open("AniStream_Database").sheet1
         
-        # Maan lete hain Column A (1) mein tere Anime Salt ke links hain
+        # Column A (1) mein tere Anime Salt ke links hain
         # Aur Column B (2) mein embed links hain
         urls_to_check = sheet.col_values(1)[1:] # [1:] se header row skip ho jayegi
         
@@ -64,9 +65,14 @@ def update_logic():
                     print("ℹ️ Link bilkul sahi hai, badalne ki zaroorat nahi.")
             else:
                 print("❌ Website se link nahi nikal paya.")
+            
+            # <-- Google API Rate Limit (Too Many Requests) se bachne ke liye gap
+            time.sleep(2)
                 
     except Exception as e:
         print(f"❌ Automation loop me error: {e}")
+        print("🔍 Error ki poori details (Traceback):")
+        traceback.print_exc() # <-- Ye ab exact line number batayega kahan crash hua
         
     print("[*] Check complete. Ab bot agle round tak aaram karega.")
 
