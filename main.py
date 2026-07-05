@@ -3,32 +3,26 @@ import json
 import time
 import schedule
 import gspread
-import traceback  # <-- Naya import error details track karne ke liye
-from oauth2client.service_account import ServiceAccountCredentials
+import traceback
 from scraper import get_embed_link
 
 def get_gspread_client():
     try:
-        # Secrets se GCP credentials ka string uthana
+        # Railway ke Variables se credentials uthana
         creds_json_string = os.getenv("GCP_CREDENTIALS")
         
         if not creds_json_string:
-            raise ValueError("Bhai, GCP_CREDENTIALS secret mila hi nahi!")
+            print("❌ Error: GCP_CREDENTIALS variable missing in Railway!")
+            return None
             
-        # String ko wapas JSON dictionary mein badalna
         creds_dict = json.loads(creds_json_string)
         
-        # Google Sheets aur Drive ki permission set karna
-        scope = [
-            "https://spreadsheets.google.com/feeds",
-            "https://www.googleapis.com/auth/drive"
-        ]
-        
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-        client = gspread.authorize(creds)
+        # Modern stable method for Google Sheets connection
+        client = gspread.service_account_from_dict(creds_dict)
         return client
     except Exception as e:
         print(f"❌ Google Sheet connect karne me error aaya: {e}")
+        traceback.print_exc()
         return None
 
 def update_logic():
@@ -40,14 +34,13 @@ def update_logic():
         return
         
     try:
-        # Apni Google Sheet ka naam
+        # Sheet ka naam verify kar le, database ka exact wahi hona chahiye
         sheet = client.open("AniStream_Database").sheet1
         
-        # Column A (1) mein tere Anime Salt ke links hain
-        # Aur Column B (2) mein embed links hain
-        urls_to_check = sheet.col_values(1)[1:] # [1:] se header row skip ho jayegi
+        # Column A (1) mein links hain
+        urls_to_check = sheet.col_values(1)[1:] 
         
-        for index, url in enumerate(urls_to_check, start=2): # Row 2 se start hoga
+        for index, url in enumerate(urls_to_check, start=2):
             if not url or "animesalt" not in url:
                 continue
                 
@@ -55,35 +48,31 @@ def update_logic():
             new_embed = get_embed_link(url)
             
             if new_embed and new_embed != "No embed link found":
-                # Purana embed link jo sheet me hai use check karo
                 old_embed = sheet.cell(index, 2).value
                 
                 if new_embed != old_embed:
-                    print(f"✅ Link badal gaya! Old: {old_embed} -> New: {new_embed}")
-                    sheet.update_cell(index, 2, new_embed) # Column B update ho jayega
+                    print(f"✅ Updating Row {index}: {new_embed}")
+                    sheet.update_cell(index, 2, new_embed)
                 else:
-                    print("ℹ️ Link bilkul sahi hai, badalne ki zaroorat nahi.")
+                    print(f"ℹ️ Row {index}: No change.")
             else:
-                print("❌ Website se link nahi nikal paya.")
+                print(f"❌ Row {index}: Scrape failed.")
             
-            # <-- Google API Rate Limit (Too Many Requests) se bachne ke liye gap
-            time.sleep(2)
+            # API Rate limiting se bachne ke liye gap
+            time.sleep(3)
                 
     except Exception as e:
-        print(f"❌ Automation loop me error: {e}")
-        print("🔍 Error ki poori details (Traceback):")
-        traceback.print_exc() # <-- Ye ab exact line number batayega kahan crash hua
+        print(f"❌ Automation loop mein error aaya: {e}")
+        traceback.print_exc()
         
-    print("[*] Check complete. Ab bot agle round tak aaram karega.")
+    print("[*] Check complete. Bot agle round ke liye wait kar raha hai.")
 
-# Har 1 ghante mein check karega
+# Scheduler
 schedule.every(1).hours.do(update_logic)
 
 if __name__ == "__main__":
-    print("🚀 Bot successfully start ho gaya hai!")
-    
-    # Pehli baar turant chalega
-    update_logic()
+    print("🚀 AniStream-Bot start ho gaya!")
+    update_logic() # Pehli baar execute
     
     while True:
         schedule.run_pending()
