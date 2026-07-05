@@ -4,7 +4,7 @@ import time
 from bs4 import BeautifulSoup
 
 from config import TARGET_SITES, USER_AGENT
-from parser import parse_anime_list
+from parser import parse_anime_list, parse_episode_page
 from cache import load_cache, save_cache
 from sheet import update_google_sheet
 
@@ -17,35 +17,43 @@ def scrape_anime():
 
     for base_url in TARGET_SITES:
         try:
-            logger.info(f"Scraping {base_url}")
+            logger.info(f"Scraping homepage: {base_url}")
             resp = requests.get(base_url, headers=headers, timeout=20)
             soup = BeautifulSoup(resp.text, 'lxml')
             
             anime_list = parse_anime_list(soup)
-            logger.info(f"Found {len(anime_list)} anime")
+            logger.info(f"Found {len(anime_list)} anime on homepage")
 
-            for anime in anime_list[:15]:   # Limit for testing
+            for anime in anime_list[:30]:  # Limit for speed
                 anime_id = anime['id']
-                watched = cache.get(anime_id, [])
+                if anime_id in cache and len(cache[anime_id]) > 0:
+                    continue  # Already processed
 
-                # Agar naya anime hai toh add karo
-                if anime_id not in cache or len(watched) == 0:
-                    logger.info(f"New Anime: {anime['name']}")
-                    new_data.append({
-                        'anime': anime,
-                        'episodes': [{
+                logger.info(f"Processing new anime: {anime['name']}")
+
+                # Episode page scrape (basic for now)
+                episodes = []
+                try:
+                    ep_data = parse_episode_page(anime['url'])
+                    if ep_data:
+                        episodes.append({
                             'number': 1,
-                            'title': f"Episode 1 - {anime['name']}",
+                            'title': ep_data.get('title', f"Episode 1 - {anime['name']}"),
                             'thumbnail': anime.get('poster', ''),
-                            'streams': {"720": "https://example.com/stream.m3u8"},
+                            'streams': {"720": "https://example.com/placeholder.m3u8"},  # TODO: real extractor
                             'hindi_dub': True
-                        }]
-                    })
+                        })
+                except:
+                    pass
+
+                if episodes:
+                    new_data.append({'anime': anime, 'episodes': episodes})
                     cache[anime_id] = [1]
 
-            time.sleep(4)  # Rate limiting
+                time.sleep(2)  # Be gentle
+
         except Exception as e:
-            logger.error(f"Error {base_url}: {e}")
+            logger.error(f"Error scraping {base_url}: {e}")
 
     save_cache(cache)
     return new_data
