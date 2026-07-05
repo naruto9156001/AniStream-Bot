@@ -1,36 +1,40 @@
 import requests
+from bs4 import BeautifulSoup
 from config import TMDB_API_KEY
 
 def parse_anime_list(soup):
-    """Update selectors according to your anime website"""
+    """Animesalt.in ke homepage/recent se anime list nikaalne ke liye"""
     items = []
-    # Example selectors (change these)
-    for card in soup.select('.card, .anime-item, .series-block, .item'):
-        link = card.find('a')
-        img = card.find('img')
-        title = card.select_one('h3, .title, .name')
+    # Animesalt ke common selectors
+    for card in soup.select('a[href*="/anime/"], .anime-card, .series-item'):
+        link = card.get('href') or card.get('data-href')
+        if not link:
+            continue
+        title_tag = card.select_one('h3, .title, .name, img[alt]')
+        title = title_tag.get('alt') or title_tag.text.strip() if title_tag else ''
+        
         items.append({
-            'id': card.get('data-id') or (link['href'].split('/')[-1] if link else 'unknown'),
-            'name': title.text.strip() if title else '',
-            'url': link['href'] if link else '',
-            'poster': img['src'] if img else ''
+            'id': link.split('/')[-1].split('-')[0] if link else 'unknown',
+            'name': title,
+            'url': link if link.startswith('http') else 'https://animesalt.in' + link,
+            'poster': ''
         })
     return items
 
-def get_tmdb_metadata(name):
-    if not TMDB_API_KEY:
-        return {}
+def parse_episode_page(url):
+    """Particular episode page se data nikaalna"""
     try:
-        url = f"https://api.themoviedb.org/3/search/tv?api_key={TMDB_API_KEY}&query={name.replace(' ', '+')}"
-        data = requests.get(url).json()
-        if data.get('results'):
-            item = data['results'][0]
-            return {
-                'synopsis': item.get('overview', ''),
-                'poster': f"https://image.tmdb.org/t/p/w500{item.get('poster_path')}" if item.get('poster_path') else '',
-                'year': item.get('first_air_date', '')[:4],
-                'imdb': item.get('vote_average', 0)
-            }
+        resp = requests.get(url, timeout=15)
+        soup = BeautifulSoup(resp.text, 'lxml')
+        
+        # Player iframe ya video source dhundna
+        player = soup.find('iframe') or soup.find('video')
+        player_url = player.get('src') if player else url
+        
+        return {
+            'title': soup.find('h1').text.strip() if soup.find('h1') else 'Episode',
+            'thumbnail': '',
+            'player_url': player_url
+        }
     except:
-        pass
-    return {}
+        return None
