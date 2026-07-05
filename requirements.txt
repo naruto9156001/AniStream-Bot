@@ -1,5 +1,7 @@
 requests
 beautifulsoup4
-schedule
+lxml
 gspread
-oauth2client
+google-auth
+python-dotenv
+tmdbsimple
